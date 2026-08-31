@@ -1,9 +1,7 @@
 package loader
 
 import (
-	"bytes"
-	"io"
-	"os"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -30,24 +28,25 @@ func TestPickCandyVersion(t *testing.T) {
 			Source:  "github.com/o/r@" + tag,
 		}
 	}
-	capture := func(fn func() spec.CandyCandidate) (spec.CandyCandidate, string) {
-		old := os.Stderr
-		r, w, _ := os.Pipe()
-		os.Stderr = w
-		got := fn()
-		_ = w.Close()
-		os.Stderr = old
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		return got, buf.String()
+	// The arbiter takes an advisory SINK, so the advisory is captured as data. This test used
+	// to redirect os.Stderr and scrape the bytes back — a workaround for advisories that had
+	// nowhere structured to go. loaderkit.PickCandyVersion now requires the sink, so the
+	// scraping is gone rather than kept alongside it.
+	capture := func(fn func(warn func(string, ...any)) spec.CandyCandidate) (spec.CandyCandidate, string) {
+		var sb strings.Builder
+		got := fn(func(format string, args ...any) {
+			sb.WriteString(fmt.Sprintf(format, args...))
+			sb.WriteString("\n")
+		})
+		return got, sb.String()
 	}
 
 	// Same per-entity version, different git tags -> NO warning, newest tag wins.
-	got, warn := capture(func() spec.CandyCandidate {
+	got, warn := capture(func(warn func(string, ...any)) spec.CandyCandidate {
 		return loaderkit.PickCandyVersion("github.com/o/r/layers/x", []spec.CandyCandidate{
 			mk("2026.141.1600", "v2026.141.1600"),
 			mk("2026.141.1600", "v2026.150.900"),
-		})
+		}, warn)
 	})
 	if warn != "" {
 		t.Errorf("same per-entity version must not warn, got: %q", warn)
@@ -57,11 +56,11 @@ func TestPickCandyVersion(t *testing.T) {
 	}
 
 	// Different per-entity versions -> exactly one warning, newest version wins.
-	got, warn = capture(func() spec.CandyCandidate {
+	got, warn = capture(func(warn func(string, ...any)) spec.CandyCandidate {
 		return loaderkit.PickCandyVersion("github.com/o/r/layers/x", []spec.CandyCandidate{
 			mk("2026.141.1600", "v2026.141.1600"),
 			mk("2026.144.0531", "v2026.144.531"),
-		})
+		}, warn)
 	})
 	if got.Version != "2026.144.0531" {
 		t.Errorf("newest per-entity version must win, got %q", got.Version)
