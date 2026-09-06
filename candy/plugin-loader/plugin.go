@@ -228,7 +228,7 @@ func (*provider) BuildFleetNode(pn spec.ParsedNode, t spec.Threaded) (*spec.Flee
 	return loaderkit.BuildFleetNode(pn, t)
 }
 
-func (*provider) BuildResourceMemberChildren(pn spec.ParsedNode, t spec.Threaded) (map[string]*spec.FleetNode, error) {
+func (*provider) BuildResourceMemberChildren(pn spec.ParsedNode, t spec.Threaded) ([]spec.Member, error) {
 	return loaderkit.BuildResourceMemberChildren(pn, t)
 }
 

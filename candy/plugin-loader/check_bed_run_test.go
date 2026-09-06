@@ -59,9 +59,12 @@ func TestValidateCheckBeds_VmRefMustResolve(t *testing.T) {
 // TestValidateCheckBeds_LocalRefMustResolve asserts a local-target bed whose
 // local: template is undefined is rejected, and that a defined one passes.
 func TestValidateCheckBeds_LocalRefMustResolve(t *testing.T) {
+	// The from: must NOT name the bed itself: the Phase-3 deploy-hop arm resolves a
+	// from: that names a kind:check BED (the clone-base chain), so a self-referential
+	// fixture would satisfy the lookup and never exercise the missing-template error.
 	missing := &spec.UnifiedFile{
 		Fleet: map[string]spec.FleetNode{
-			"check-local": {Target: "local", From: "check-local", Disposable: new(true)},
+			"check-local": {Target: "local", From: "missing-local", Disposable: new(true)},
 		},
 	}
 	if err := loaderkit.ValidateCheckBeds(missing, testThreaded()); err == nil || !strings.Contains(err.Error(), "not defined") {

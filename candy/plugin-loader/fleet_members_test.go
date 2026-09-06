@@ -3,11 +3,18 @@ package loader
 // Relocated from charly/fleet_members_test.go (#55 decoupling cone, Batch C):
 // TestFoldMembers_* and TestValidateMembers_* assert loaderkit.FoldMembers /
 // loaderkit.ValidateMembers directly against spec.UnifiedFile fixtures — zero
-// charly coupling. The pod-vs-other routing (TestIsPodMember), key-sort
-// (TestSortedMemberKeys), teardown-routing (TestTearDownMembers_*), and the real
-// Kong-grammar regression guard (TestFleetDelArgv_KongAccepts) all exercise
-// charly-internal or command:fleet-plugin-grammar-mirroring functions and STAY
-// in charly/fleet_members_test.go.
+// charly coupling. The pod-vs-other routing (TestIsPodMember), teardown-routing
+// (TestTearDownMembers_*), and the real Kong-grammar regression guard
+// (TestFleetDelArgv_KongAccepts) all exercise charly-internal or
+// command:fleet-plugin-grammar-mirroring functions and STAY in
+// charly/fleet_members_test.go. (The former key-sort test died with the dual
+// maps: the ONE ordered Member list is deterministic in authored order — there
+// is nothing left to sort, spec #103 + sdk #221.)
+//
+// Fixtures are authored over the ONE ordered member tree: every companion here
+// is a deploy-level member (Position: spec.PositionDeployLevel) — the former
+// alongside map — since only deploy-level entries fold to top-level addressable
+// Fleet entries.
 
 import (
 	"strings"
@@ -25,17 +32,23 @@ func deployKeysList(m map[string]spec.FleetNode) []string {
 	return out
 }
 
-// TestFoldMembers_FoldsTopLevelAndInheritsDisposability verifies a member is
-// registered as a top-level addressable Fleet entry, MemberOf points at the
-// owner, and a disposable owner's disposability is inherited.
+// deployLevelMember is the fixture constructor for a deploy-level member entry
+// (the authored shape whose companion folds top-level).
+func deployLevelMember(name string, node *spec.FleetNode) spec.Member {
+	return spec.Member{Name: name, Position: spec.PositionDeployLevel, Node: node}
+}
+
+// TestFoldMembers_FoldsTopLevelAndInheritsDisposability verifies a deploy-level
+// member is registered as a top-level addressable Fleet entry, MemberOf points
+// at the owner, and a disposable owner's disposability is inherited.
 func TestFoldMembers_FoldsTopLevelAndInheritsDisposability(t *testing.T) {
 	uf := &spec.UnifiedFile{Fleet: map[string]spec.FleetNode{
 		"check-cross-pod-cdp": {
 			Target:     "pod",
 			Image:      "web",
 			Disposable: new(true),
-			Members: map[string]*spec.FleetNode{
-				"chrome": {Target: "pod", Image: "chrome-headless"},
+			Member: []spec.Member{
+				deployLevelMember("chrome", &spec.FleetNode{Target: "pod", Image: "chrome-headless"}),
 			},
 		},
 	}}
@@ -44,7 +57,7 @@ func TestFoldMembers_FoldsTopLevelAndInheritsDisposability(t *testing.T) {
 	}
 	member, ok := uf.Fleet["chrome"]
 	if !ok {
-		t.Fatalf("member 'chrome' was not folded into the Fleet map: %v", deployKeysList(uf.Fleet))
+		t.Fatalf("deploy-level member 'chrome' was not folded into the Fleet map: %v", deployKeysList(uf.Fleet))
 	}
 	if member.MemberOf != "check-cross-pod-cdp" {
 		t.Errorf("member.MemberOf = %q, want check-cross-pod-cdp", member.MemberOf)
@@ -62,9 +75,11 @@ func TestFoldMembers_FoldsTopLevelAndInheritsDisposability(t *testing.T) {
 func TestFoldMembers_NonDisposableOwnerDoesNotForceDisposable(t *testing.T) {
 	uf := &spec.UnifiedFile{Fleet: map[string]spec.FleetNode{
 		"prod": {
-			Target:  "pod",
-			Image:   "web",
-			Members: map[string]*spec.FleetNode{"sidecar": {Target: "pod", Image: "chrome-headless"}},
+			Target: "pod",
+			Image:  "web",
+			Member: []spec.Member{
+				deployLevelMember("sidecar", &spec.FleetNode{Target: "pod", Image: "chrome-headless"}),
+			},
 		},
 	}}
 	if err := loaderkit.FoldMembers(uf); err != nil {
@@ -80,7 +95,9 @@ func TestFoldMembers_NonDisposableOwnerDoesNotForceDisposable(t *testing.T) {
 func TestFoldMembers_CollisionIsError(t *testing.T) {
 	uf := &spec.UnifiedFile{Fleet: map[string]spec.FleetNode{
 		"web": {Target: "pod", Image: "web"},
-		"bed": {Target: "pod", Image: "web", Members: map[string]*spec.FleetNode{"web": {Target: "pod", Image: "chrome-headless"}}},
+		"bed": {Target: "pod", Image: "web", Member: []spec.Member{
+			deployLevelMember("web", &spec.FleetNode{Target: "pod", Image: "chrome-headless"}),
+		}},
 	}}
 	err := loaderkit.FoldMembers(uf)
 	if err == nil || !strings.Contains(err.Error(), "collides") {
@@ -91,7 +108,9 @@ func TestFoldMembers_CollisionIsError(t *testing.T) {
 // TestFoldMembers_EmptyMemberIsError: a nil member node is rejected.
 func TestFoldMembers_EmptyMemberIsError(t *testing.T) {
 	uf := &spec.UnifiedFile{Fleet: map[string]spec.FleetNode{
-		"bed": {Target: "pod", Image: "web", Members: map[string]*spec.FleetNode{"chrome": nil}},
+		"bed": {Target: "pod", Image: "web", Member: []spec.Member{
+			deployLevelMember("chrome", nil),
+		}},
 	}}
 	if err := loaderkit.FoldMembers(uf); err == nil {
 		t.Fatalf("expected an error for a nil member node")
@@ -101,8 +120,8 @@ func TestFoldMembers_EmptyMemberIsError(t *testing.T) {
 // TestValidateMembers_BadTarget rejects an unsupported member target kind.
 func TestValidateMembers_BadTarget(t *testing.T) {
 	uf := &spec.UnifiedFile{Fleet: map[string]spec.FleetNode{
-		"bed": {Target: "pod", Image: "web", Members: map[string]*spec.FleetNode{
-			"chrome": {Target: "bogus", Image: "chrome-headless"},
+		"bed": {Target: "pod", Image: "web", Member: []spec.Member{
+			deployLevelMember("chrome", &spec.FleetNode{Target: "bogus", Image: "chrome-headless"}),
 		}},
 	}}
 	if err := loaderkit.ValidateMembers(uf); err == nil || !strings.Contains(err.Error(), "unsupported target") {
@@ -126,15 +145,15 @@ var deployTargetWords = func() []string {
 }()
 
 // TestValidateMembers_AcceptsCanonicalSubstrates proves the kind-blind
-// validation: a peer member whose target is any of the CANONICAL deploy
+// validation: a deploy-level member whose target is any of the CANONICAL deploy
 // substrates is ACCEPTED. Non-vacuous — asserts all 5 (pod/vm/local/kubernetes/
 // android), so a silently-empty canonical set or a broken membership check
 // cannot pass.
 func TestValidateMembers_AcceptsCanonicalSubstrates(t *testing.T) {
 	for _, target := range deployTargetWords {
 		uf := &spec.UnifiedFile{Fleet: map[string]spec.FleetNode{
-			"bed": {Target: "pod", Image: "web", Members: map[string]*spec.FleetNode{
-				"side": {Target: target, Image: "side-img"},
+			"bed": {Target: "pod", Image: "web", Member: []spec.Member{
+				deployLevelMember("side", &spec.FleetNode{Target: target, Image: "side-img"}),
 			}},
 		}}
 		if err := loaderkit.ValidateMembers(uf); err != nil {
@@ -145,11 +164,11 @@ func TestValidateMembers_AcceptsCanonicalSubstrates(t *testing.T) {
 
 // TestValidateMembers_RejectsGroup guards the kind-boundary: `group` is a
 // spec.ResourceKinds kind but NOT a deploy substrate (no deploy provider), so
-// it is NOT a valid peer-member target.
+// it is NOT a valid member target.
 func TestValidateMembers_RejectsGroup(t *testing.T) {
 	uf := &spec.UnifiedFile{Fleet: map[string]spec.FleetNode{
-		"bed": {Target: "pod", Image: "web", Members: map[string]*spec.FleetNode{
-			"grp": {Target: "group", Image: "grp-img"},
+		"bed": {Target: "pod", Image: "web", Member: []spec.Member{
+			deployLevelMember("grp", &spec.FleetNode{Target: "group", Image: "grp-img"}),
 		}},
 	}}
 	if err := loaderkit.ValidateMembers(uf); err == nil || !strings.Contains(err.Error(), "unsupported target") {
@@ -161,8 +180,8 @@ func TestValidateMembers_RejectsGroup(t *testing.T) {
 // pod) is a valid member target under the kind-blind predicate.
 func TestValidateMembers_AcceptsEmptyTarget(t *testing.T) {
 	uf := &spec.UnifiedFile{Fleet: map[string]spec.FleetNode{
-		"bed": {Target: "pod", Image: "web", Members: map[string]*spec.FleetNode{
-			"side": {Target: "", Image: "side-img"},
+		"bed": {Target: "pod", Image: "web", Member: []spec.Member{
+			deployLevelMember("side", &spec.FleetNode{Target: "", Image: "side-img"}),
 		}},
 	}}
 	if err := loaderkit.ValidateMembers(uf); err != nil {
@@ -174,8 +193,8 @@ func TestValidateMembers_AcceptsEmptyTarget(t *testing.T) {
 // the nested dotted-path addressing grammar.
 func TestValidateMembers_DottedKeyRejected(t *testing.T) {
 	uf := &spec.UnifiedFile{Fleet: map[string]spec.FleetNode{
-		"bed": {Target: "pod", Image: "web", Members: map[string]*spec.FleetNode{
-			"a.b": {Target: "pod", Image: "chrome-headless"},
+		"bed": {Target: "pod", Image: "web", Member: []spec.Member{
+			deployLevelMember("a.b", &spec.FleetNode{Target: "pod", Image: "chrome-headless"}),
 		}},
 	}}
 	if err := loaderkit.ValidateMembers(uf); err == nil {
