@@ -39,3 +39,8 @@ require (
 	google.golang.org/grpc v1.61.0 // indirect
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af // indirect
 )
+
+// dev-only worktree replace for the F1 parser-consolidation wave (spec seam change): dropped
+// for the real spec tag pin before merge.
+replace github.com/opencharly/spec => ../../../spec
+
