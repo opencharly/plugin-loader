@@ -208,10 +208,11 @@ func (*provider) FoldStandaloneTemplateReply(disc, name string, replyJSON json.R
 }
 
 // AssembleEntityBody / DecodeNodeValue / EntityBodyJSON / BuildDeployNode /
-// BuildResourceMemberChildren / BuildDeployNodeInto / IsDeployShape / DecodeStandaloneTemplateJSON /
-// ResourceChildren implement spec.ProjectLoader — the typed entity-body assembly +
-// deploy/resource-member tree-builder mechanism the host calls (compiled-in, no wire envelope):
-// delegate to the ONE copy in sdk/loaderkit (K1 unit 3b).
+// BuildResourceMemberChildren / BuildDeployNodeInto / IsDeployShape / DecodeStandaloneTemplateJSON
+// implement spec.ProjectLoader — the typed entity-body assembly + deploy/resource-member
+// tree-builder mechanism the host calls (compiled-in, no wire envelope): delegate to the ONE
+// copy in sdk/loaderkit (K1 unit 3b). ResourceChildren is DELETED with the interface method
+// (parser consolidation F1.2 — the fold's member channel lives in IsDeployShape).
 func (*provider) AssembleEntityBody(pn spec.ParsedNode) (*yaml.Node, error) {
 	return loaderkit.AssembleEntityBody(pn)
 }
@@ -242,10 +243,6 @@ func (*provider) IsDeployShape(pn spec.ParsedNode) bool {
 
 func (*provider) DecodeStandaloneTemplateJSON(pn spec.ParsedNode, t spec.Threaded) (json.RawMessage, error) {
 	return loaderkit.DecodeStandaloneTemplateJSON(pn, t)
-}
-
-func (*provider) ResourceChildren(pn spec.ParsedNode) []spec.ParsedNode {
-	return loaderkit.ResourceChildren(pn)
 }
 
 // ValidateCandyManifestCUE / ValidateNodeFormSteps implement spec.ProjectLoader — the typed
