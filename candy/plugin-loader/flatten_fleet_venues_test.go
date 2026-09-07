@@ -9,7 +9,7 @@ import (
 
 // flatten_fleet_venues_test.go — relocated from charly/node_fleet_venue_test.go (#55
 // decoupling, Batch A, cross-batch file-ownership matrix: Batch A executes this move on Batch
-// C's behalf). Both tests assert loaderkit.FlattenFleetVenues directly, zero charly dep.
+// C's behalf). Both tests assert loaderkit.FlattenVenuesByPosition directly, zero charly dep.
 // (charly's cmdOp desugared-Op fixture helper is inlined here as a literal — see the
 // "test -f /done" step below — rather than ported, since it is used exactly once.)
 //
@@ -18,18 +18,18 @@ import (
 // the kind key vs entity key inside the kind body) — the venue pass derives bare vs dotted
 // addressing from that position, never from the node's kind (the dead root-kind branch).
 
-// TestFlattenFleetVenues_StampsAndHoists verifies the loader venue pass:
+// TestFlattenVenuesByPosition_StampsAndHoists verifies the loader venue pass:
 // deploy-level member steps get a bare venue, in-substrate member steps a dotted venue, and
-// all are hoisted into the root fleet's flat Plan (member Plans cleared).
-func TestFlattenFleetVenues_StampsAndHoists(t *testing.T) {
-	uf := &spec.UnifiedFile{Fleet: map[string]spec.FleetNode{
+// all are hoisted into the root deploy's flat Plan (member Plans cleared).
+func TestFlattenVenuesByPosition_StampsAndHoists(t *testing.T) {
+	uf := &spec.UnifiedFile{Deploy: map[string]spec.DeployNode{
 		// A pure-GROUP bed whose agent-provisioned DEPLOY-LEVEL member `os` carries a step.
 		"default": {
 			Target: "", // group
 			Member: []spec.Member{{
 				Name:     "os",
 				Position: spec.PositionDeployLevel,
-				Node: &spec.FleetNode{
+				Node: &spec.DeployNode{
 					Target:           "pod",
 					AgentProvisioned: true,
 					Plan: []spec.Step{
@@ -48,7 +48,7 @@ func TestFlattenFleetVenues_StampsAndHoists(t *testing.T) {
 			Member: []spec.Member{{
 				Name:     "migrate",
 				Position: spec.PositionInSubstrate,
-				Node: &spec.FleetNode{
+				Node: &spec.DeployNode{
 					Target:           "pod",
 					AgentProvisioned: true,
 					Plan: []spec.Step{
@@ -59,12 +59,12 @@ func TestFlattenFleetVenues_StampsAndHoists(t *testing.T) {
 		},
 	}}
 
-	if err := loaderkit.FlattenFleetVenues(uf); err != nil {
+	if err := loaderkit.FlattenVenuesByPosition(uf); err != nil {
 		t.Fatalf("flattenFleetVenues: %v", err)
 	}
 
 	// default: one step hoisted, venue == bare deploy-level member name "os".
-	def := uf.Fleet["default"]
+	def := uf.Deploy["default"]
 	if len(def.Plan) != 1 {
 		t.Fatalf("default: want 1 hoisted step, got %d", len(def.Plan))
 	}
@@ -76,7 +76,7 @@ func TestFlattenFleetVenues_StampsAndHoists(t *testing.T) {
 	}
 
 	// cross: root step venue == "cross"; in-substrate member step venue == "cross.migrate".
-	cross := uf.Fleet["cross"]
+	cross := uf.Deploy["cross"]
 	if len(cross.Plan) != 2 {
 		t.Fatalf("cross: want 2 steps (root + hoisted member), got %d", len(cross.Plan))
 	}
@@ -92,11 +92,11 @@ func TestFlattenFleetVenues_StampsAndHoists(t *testing.T) {
 	}
 }
 
-// TestFlattenFleetVenues_GroupDirectStepRejected verifies a direct step under a
-// pure group fleet (no workload container) is a hard error — a group has no
+// TestFlattenVenuesByPosition_GroupDirectStepRejected verifies a direct step under a
+// pure group deploy (no workload container) is a hard error — a group has no
 // venue of its own.
-func TestFlattenFleetVenues_GroupDirectStepRejected(t *testing.T) {
-	uf := &spec.UnifiedFile{Fleet: map[string]spec.FleetNode{
+func TestFlattenVenuesByPosition_GroupDirectStepRejected(t *testing.T) {
+	uf := &spec.UnifiedFile{Deploy: map[string]spec.DeployNode{
 		"grp": {
 			Target: "", // group, but carries a direct step → illegal
 			Plan: []spec.Step{
@@ -104,7 +104,7 @@ func TestFlattenFleetVenues_GroupDirectStepRejected(t *testing.T) {
 			},
 		},
 	}}
-	if err := loaderkit.FlattenFleetVenues(uf); err == nil {
-		t.Fatalf("expected error for a direct step under a group fleet, got nil")
+	if err := loaderkit.FlattenVenuesByPosition(uf); err == nil {
+		t.Fatalf("expected error for a direct step under a group deploy, got nil")
 	}
 }

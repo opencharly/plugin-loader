@@ -22,7 +22,7 @@ import (
 // TestValidateCheckBeds_TargetEnum asserts an unsupported target is rejected.
 func TestValidateCheckBeds_TargetEnum(t *testing.T) {
 	uf := &spec.UnifiedFile{
-		Fleet: map[string]spec.FleetNode{
+		Deploy: map[string]spec.DeployNode{
 			"check-weird": {Target: "kubernetes", Disposable: new(true)},
 		},
 	}
@@ -36,7 +36,7 @@ func TestValidateCheckBeds_TargetEnum(t *testing.T) {
 // entity is undefined is rejected, and that a defined entity passes.
 func TestValidateCheckBeds_VmRefMustResolve(t *testing.T) {
 	missing := &spec.UnifiedFile{
-		Fleet: map[string]spec.FleetNode{
+		Deploy: map[string]spec.DeployNode{
 			"check-k3s-vm": {Target: "vm", From: "k3s-vm", Disposable: new(true)},
 		},
 	}
@@ -47,7 +47,7 @@ func TestValidateCheckBeds_VmRefMustResolve(t *testing.T) {
 		PluginKinds: map[string]map[string]json.RawMessage{
 			"vm": rawTemplateMap(map[string]*vmshared.VmSpec{"k3s-vm": {}}),
 		},
-		Fleet: map[string]spec.FleetNode{
+		Deploy: map[string]spec.DeployNode{
 			"check-k3s-vm": {Target: "vm", From: "k3s-vm", Disposable: new(true)},
 		},
 	}
@@ -63,7 +63,7 @@ func TestValidateCheckBeds_LocalRefMustResolve(t *testing.T) {
 	// from: that names a kind:check BED (the clone-base chain), so a self-referential
 	// fixture would satisfy the lookup and never exercise the missing-template error.
 	missing := &spec.UnifiedFile{
-		Fleet: map[string]spec.FleetNode{
+		Deploy: map[string]spec.DeployNode{
 			"check-local": {Target: "local", From: "missing-local", Disposable: new(true)},
 		},
 	}
@@ -74,7 +74,7 @@ func TestValidateCheckBeds_LocalRefMustResolve(t *testing.T) {
 		PluginKinds: map[string]map[string]json.RawMessage{
 			"local": rawTemplateMap(map[string]*spec.LocalSpec{"check-local": {}}),
 		},
-		Fleet: map[string]spec.FleetNode{
+		Deploy: map[string]spec.DeployNode{
 			"check-local": {Target: "local", From: "check-local", Disposable: new(true)},
 		},
 	}

@@ -40,45 +40,45 @@ func TestValidatePreemptibleOnNode(t *testing.T) {
 
 	cases := []struct {
 		name     string
-		node     spec.FleetNode
+		node     spec.DeployNode
 		wantErr  bool
 		contains string
 	}{
 		{
 			name: "valid holder",
-			node: spec.FleetNode{Preemptible: &spec.PreemptibleConfig{Holds: []string{"gpu"}}},
+			node: spec.DeployNode{Preemptible: &spec.PreemptibleConfig{Holds: []string{"gpu"}}},
 		},
 		{
 			name: "valid claimant",
-			node: spec.FleetNode{RequiresExclusive: []string{"gpu"}},
+			node: spec.DeployNode{RequiresExclusive: []string{"gpu"}},
 		},
 		{
 			name:     "empty holds",
-			node:     spec.FleetNode{Preemptible: &spec.PreemptibleConfig{}},
+			node:     spec.DeployNode{Preemptible: &spec.PreemptibleConfig{}},
 			wantErr:  true,
 			contains: "must list at least one",
 		},
 		{
 			name:     "bad stop",
-			node:     spec.FleetNode{Preemptible: &spec.PreemptibleConfig{Holds: []string{"gpu"}, Stop: "pause"}},
+			node:     spec.DeployNode{Preemptible: &spec.PreemptibleConfig{Holds: []string{"gpu"}, Stop: "pause"}},
 			wantErr:  true,
 			contains: "not supported",
 		},
 		{
 			name:     "bad restore",
-			node:     spec.FleetNode{Preemptible: &spec.PreemptibleConfig{Holds: []string{"gpu"}, Restore: "maybe"}},
+			node:     spec.DeployNode{Preemptible: &spec.PreemptibleConfig{Holds: []string{"gpu"}, Restore: "maybe"}},
 			wantErr:  true,
 			contains: "is invalid",
 		},
 		{
 			name:     "empty requires token",
-			node:     spec.FleetNode{RequiresExclusive: []string{""}},
+			node:     spec.DeployNode{RequiresExclusive: []string{""}},
 			wantErr:  true,
 			contains: "empty token",
 		},
 		{
 			name: "self-contention",
-			node: spec.FleetNode{
+			node: spec.DeployNode{
 				Preemptible:       &spec.PreemptibleConfig{Holds: []string{"gpu"}},
 				RequiresExclusive: []string{"gpu"},
 			},
