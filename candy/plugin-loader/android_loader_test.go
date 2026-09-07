@@ -30,7 +30,7 @@ func rawTemplateMap[T any](m map[string]*T) map[string]json.RawMessage {
 func TestValidateCheckBeds_Android(t *testing.T) {
 	// android bed without an android: ref → error.
 	uf := &spec.UnifiedFile{
-		Fleet: map[string]spec.FleetNode{
+		Deploy: map[string]spec.DeployNode{
 			"bed": {Target: "android", Disposable: new(true)},
 		},
 	}
@@ -40,7 +40,7 @@ func TestValidateCheckBeds_Android(t *testing.T) {
 
 	// android bed referencing an undefined device → error.
 	uf2 := &spec.UnifiedFile{
-		Fleet: map[string]spec.FleetNode{
+		Deploy: map[string]spec.DeployNode{
 			"bed": {Target: "android", From: "ghost", Disposable: new(true)},
 		},
 	}
@@ -53,7 +53,7 @@ func TestValidateCheckBeds_Android(t *testing.T) {
 		PluginKinds: map[string]map[string]json.RawMessage{
 			"android": rawTemplateMap(map[string]*spec.AndroidSpec{"dev": {Box: "android-emulator"}}),
 		},
-		Fleet: map[string]spec.FleetNode{
+		Deploy: map[string]spec.DeployNode{
 			"bed": {Target: "android", From: "dev", Disposable: new(true)},
 		},
 	}

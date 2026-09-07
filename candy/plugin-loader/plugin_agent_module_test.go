@@ -25,7 +25,7 @@ func TestValidateIterateBed_RejectsUnknownAgent(t *testing.T) {
 		"agent": {"claude": json.RawMessage(`{"command":["claude"]}`)},
 	}}
 
-	good := &spec.FleetNode{
+	good := &spec.DeployNode{
 		Iterate: &spec.Iterate{Agent: []string{"claude"}, Sandbox: "check-sandbox"},
 		Plan:    []spec.Step{{Check: "the service responds"}},
 	}
@@ -33,7 +33,7 @@ func TestValidateIterateBed_RejectsUnknownAgent(t *testing.T) {
 		t.Fatalf("known agent 'claude' was rejected: %v", err)
 	}
 
-	bad := &spec.FleetNode{
+	bad := &spec.DeployNode{
 		Iterate: &spec.Iterate{Agent: []string{"ghost"}, Sandbox: "check-sandbox"},
 		Plan:    []spec.Step{{Check: "the service responds"}},
 	}
