@@ -39,3 +39,8 @@ require (
 	google.golang.org/grpc v1.61.0 // indirect
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af // indirect
 )
+
+// DEV: F2-wave worktree replaces (dropped before push — the final go.mod pins the
+// wave tags from the proxy).
+replace github.com/opencharly/spec => ../../../spec
+replace github.com/opencharly/sdk => ../../../sdk
