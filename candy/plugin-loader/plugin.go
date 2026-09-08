@@ -169,6 +169,13 @@ func (*provider) CueDocFromYAML(path string, data []byte) (cue.Value, error) {
 	return loaderkit.CueDocFromYAML(path, data)
 }
 
+// CueDocFromJSON implements spec.ProjectLoader — the typed canonical-JSON→cue.Value ingest the
+// host calls (compiled-in, no wire envelope): delegates to the ONE copy in sdk/loaderkit
+// (parser consolidation F2.3).
+func (*provider) CueDocFromJSON(path string, data []byte) (cue.Value, error) {
+	return loaderkit.CueDocFromJSON(path, data)
+}
+
 // ValidateNodeDocCUE implements spec.ProjectLoader — the typed load-time #NodeDoc structural gate
 // the host calls (compiled-in, no wire envelope): delegates to the ONE copy in sdk/loaderkit (K1
 // unit 2).
@@ -217,6 +224,19 @@ func (*provider) AssembleEntityBody(pn spec.ParsedNode) (*yaml.Node, error) {
 	return loaderkit.AssembleEntityBody(pn)
 }
 
+// CandyIsImage implements spec.ProjectLoader — the candy box⊻layer routing over the parsed
+// node (compiled-in, no wire envelope): delegates to the ONE copy in sdk/loaderkit (parser
+// consolidation F2.1).
+func (*provider) CandyIsImage(pn spec.ParsedNode) bool {
+	return loaderkit.CandyIsImage(pn)
+}
+
+// BuildCandy implements spec.ProjectLoader — the parsed-node candy constructor (compiled-in, no
+// wire envelope): delegates to the ONE copy in sdk/loaderkit (parser consolidation F2.1).
+func (*provider) BuildCandy(pn spec.ParsedNode) (string, *spec.InlineCandy, error) {
+	return loaderkit.BuildCandy(pn)
+}
+
 func (*provider) DecodeNodeValue(pn spec.ParsedNode, out any) error {
 	return loaderkit.DecodeNodeValue(pn, out)
 }
@@ -254,6 +274,14 @@ func (*provider) ValidateCandyManifestCUE(path string, data []byte, t spec.Threa
 
 func (*provider) ValidateNodeFormSteps(path string, data []byte, t spec.Threaded, parser spec.DocParser) error {
 	return loaderkit.ValidateNodeFormSteps(path, data, t, parser)
+}
+
+// ParseDocStream implements spec.ProjectLoader — the ONE doc-stream composer (compiled-in, no
+// wire envelope): delegates to the ONE copy in sdk/loaderkit (parser consolidation F2.5), so the
+// host's embedded default-vocabulary stream drives the same per-document pipeline the file walk
+// uses.
+func (*provider) ParseDocStream(data []byte, srcLabel, srcDir string, seams spec.WalkSeams) ([]spec.LoadedDoc, spec.ImportList, []spec.ScanSpec, error) {
+	return loaderkit.ParseDocStream(data, srcLabel, srcDir, seams)
 }
 
 // ResolveMergedDeployTree implements spec.ProjectLoader — the merged project+overlay deploy-node
