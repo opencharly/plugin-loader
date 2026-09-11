@@ -6,10 +6,13 @@ package loader
 // — the seam signature carries ONLY repoPath). The compile-time assertion in f2_seam_test.go
 // (var _ spec.ProjectLoader = (*provider)(nil)) proves the method exists at the seam; the cases
 // below prove it actually carries loaderkit's parse — a matching repo (short-form LHS included), a
-// non-matching repo, a malformed pair failing loud, and an unset override — rather than silently
-// answering empty.
+// non-matching repo, an unset override, and EVERY hard-error arm the delegator's doc comment
+// promises (a malformed pair, an empty directory, a missing directory, a non-directory target) — so
+// a misconfigured override can never silently fall through to a remote fetch.
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/opencharly/spec/proc"
@@ -33,15 +36,41 @@ func TestRepoOverrideDirSeam(t *testing.T) {
 		t.Fatalf("non-matching repo = (%q,%v,%v), want empty/false/nil", got, ok, err)
 	}
 
-	// A malformed pair is a hard error — the override was set deliberately.
+	// Unset override: no override applies.
+	t.Setenv(proc.RepoOverrideEnv, "")
+	if got, ok, err := p.RepoOverrideDir("github.com/opencharly/charly"); ok || got != "" || err != nil {
+		t.Fatalf("unset override = (%q,%v,%v), want empty/false/nil", got, ok, err)
+	}
+
+	// --- the HARD-ERROR arms: the override was set deliberately, so a typo must fail loud rather
+	// than silently fall through to a remote fetch (each must surface as a real error, never as a
+	// ("", false, nil) miss).
+
+	// A malformed pair (no `=`).
 	t.Setenv(proc.RepoOverrideEnv, "no-equals-sign")
 	if _, _, err := p.RepoOverrideDir("github.com/opencharly/charly"); err == nil {
 		t.Fatal("malformed CHARLY_REPO_OVERRIDE must fail loud, not fall through to a fetch")
 	}
 
-	// Unset override: no override applies.
-	t.Setenv(proc.RepoOverrideEnv, "")
-	if got, ok, err := p.RepoOverrideDir("github.com/opencharly/charly"); ok || got != "" || err != nil {
-		t.Fatalf("unset override = (%q,%v,%v), want empty/false/nil", got, ok, err)
+	// An EMPTY directory value (`repoPath=`).
+	t.Setenv(proc.RepoOverrideEnv, "opencharly/charly=")
+	if _, _, err := p.RepoOverrideDir("github.com/opencharly/charly"); err == nil {
+		t.Fatal("an empty override directory must fail loud, not fall through to a fetch")
+	}
+
+	// A MISSING target directory.
+	t.Setenv(proc.RepoOverrideEnv, "opencharly/charly="+filepath.Join(dir, "does-not-exist"))
+	if _, _, err := p.RepoOverrideDir("github.com/opencharly/charly"); err == nil {
+		t.Fatal("a missing override target must fail loud, not fall through to a fetch")
+	}
+
+	// A NON-DIRECTORY target (a regular file).
+	file := filepath.Join(dir, "not-a-dir")
+	if err := os.WriteFile(file, []byte("x"), 0o600); err != nil {
+		t.Fatalf("writing the non-directory target fixture: %v", err)
+	}
+	t.Setenv(proc.RepoOverrideEnv, "opencharly/charly="+file)
+	if _, _, err := p.RepoOverrideDir("github.com/opencharly/charly"); err == nil {
+		t.Fatal("a non-directory override target must fail loud, not fall through to a fetch")
 	}
 }
