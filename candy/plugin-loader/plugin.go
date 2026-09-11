@@ -28,11 +28,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 
 	"cuelang.org/go/cue"
 	"github.com/opencharly/sdk"
 	"github.com/opencharly/sdk/loaderkit"
+	"github.com/opencharly/spec/proc"
 	pb "github.com/opencharly/spec/proto"
 	"github.com/opencharly/spec/spec"
 	"gopkg.in/yaml.v3"
@@ -335,6 +337,19 @@ func (*provider) RunDiscover(rootDir string, specs []spec.ScanSpec, seams spec.W
 
 func (*provider) FinalizeScannedCandies(scanned map[string]spec.ScannedCandy, initCfg *spec.InitConfig) map[string]spec.CandyReader {
 	return loaderkit.FinalizeScannedCandies(scanned, initCfg)
+}
+
+// RepoOverrideDir implements spec.ProjectLoader — the override-precedence seam (charly #587's
+// named follow-up wave): it answers "was this run served from a local CHARLY_REPO_OVERRIDE tree,
+// and which one?" for a consumer that must NOT import the sdk (charly core is import-purity-bound
+// to the spec module alone — charly/import_purity_test.go) and must not re-derive the parse (R3).
+// The env value is read on THIS side — the loader plugin owns the env plumbing, and
+// spec/proc.RepoOverrideEnv names the variable — so the seam carries only repoPath and
+// loaderkit.RepoOverrideDir stays the ONE copy of the parser. A malformed entry, an empty override
+// directory, or a missing/non-directory target is a hard error (the override was set
+// deliberately, so a typo must fail loud rather than silently fall through to a remote fetch).
+func (*provider) RepoOverrideDir(repoPath string) (string, bool, error) {
+	return loaderkit.RepoOverrideDir(repoPath, os.Getenv(proc.RepoOverrideEnv))
 }
 
 // EnsureRepoDownloaded / CollectRemoteRefsOpts implement spec.ProjectLoader — the typed remote-repo
