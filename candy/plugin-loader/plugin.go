@@ -26,6 +26,7 @@ package loader
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -40,17 +41,22 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+//go:embed schema/*.cue
+var schemaFS embed.FS
+
 const calver = "2026.192.0000"
 
 // NewProvider returns the loader provider — a pb.ProviderServer that ALSO implements
 // spec.DocParser (the typed per-document parse the host calls compiled-in).
 func NewProvider() pb.ProviderServer { return &provider{} }
 
-// NewMeta advertises the loader capability (Class "loader", word "loader").
+// NewMeta advertises the loader capability (Class "loader", word "loader") together with the
+// plugin's OWN self-contained CUE schema (schema/loader.cue) served over Describe — there is
+// NO schema-less plugin.
 func NewMeta() pb.PluginMetaServer {
 	return sdk.NewMeta(calver, []sdk.ProvidedCapability{
 		{Class: "loader", Word: "loader"},
-	}, nil)
+	}, schemaFS)
 }
 
 // provider embeds loaderkit.DocParser, so ParseDoc — the typed per-document parse the host calls
