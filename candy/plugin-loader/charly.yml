@@ -1,7 +1,5 @@
-version: 2026.232.0520
 plugin-loader:
     candy:
-        version: 2026.192.0000
         description: |-
             The unified-config LOADER's PARSE half, relocated out of charly core into a compiled-in
             plugin candy (P6) — the config front-end every command reaches before any project is read.
