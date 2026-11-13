@@ -74,7 +74,8 @@ func TestValidateCheckBeds_LocalRefMustResolve(t *testing.T) {
 		PluginKinds: map[string]map[string]json.RawMessage{
 			// The contract's resolved envelope, not the authored body type: `#Local` (and the
 			// Go type generated from it) lives with the plugin that serves the kind
-			// (opencharly/spec#304 unit 4), and the envelope carries the same fields.
+			// (opencharly/spec#304 unit 4; opencharly/plugin-substrate#34 moved it), and the
+			// envelope carries the same fields this fixture needs.
 			"local": rawTemplateMap(map[string]*spec.ResolvedLocal{"check-local": {}}),
 		},
 		Deploy: map[string]spec.DeployNode{
