@@ -72,7 +72,7 @@ func TestValidateCheckBeds_LocalRefMustResolve(t *testing.T) {
 	}
 	ok := &spec.UnifiedFile{
 		PluginKinds: map[string]map[string]json.RawMessage{
-			"local": rawTemplateMap(map[string]*spec.LocalSpec{"check-local": {}}),
+			"local": rawTemplateMap(map[string]*spec.ResolvedLocal{"check-local": {}}),
 		},
 		Deploy: map[string]spec.DeployNode{
 			"check-local": {Target: "local", From: "check-local", Disposable: new(true)},
