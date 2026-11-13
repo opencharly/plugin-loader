@@ -72,7 +72,12 @@ func TestValidateCheckBeds_LocalRefMustResolve(t *testing.T) {
 	}
 	ok := &spec.UnifiedFile{
 		PluginKinds: map[string]map[string]json.RawMessage{
-			"local": rawTemplateMap(map[string]*spec.LocalSpec{"check-local": {}}),
+			// The contract's resolved envelope, not the authored body type: `#Local` (and the
+			// Go type generated from it) lives with the plugin that serves the kind
+			// (opencharly/spec#304 unit 4; opencharly/plugin-substrate#34 moved it), and the
+			// envelope carries the same fields this fixture needs. The assertion below is the
+			// missing-local-ref error, which the field set does not change.
+			"local": rawTemplateMap(map[string]*spec.ResolvedLocal{"check-local": {}}),
 		},
 		Deploy: map[string]spec.DeployNode{
 			"check-local": {Target: "local", From: "check-local", Disposable: new(true)},
