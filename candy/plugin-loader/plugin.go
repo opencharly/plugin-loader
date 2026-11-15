@@ -171,6 +171,15 @@ func (*provider) ValidateEntityCUE(kind, label string, entity cue.Value) error {
 	return loaderkit.ValidateEntityCUE(kind, label, entity)
 }
 
+// ValidateEntityCUEWithGates implements spec.ProjectLoader — the same check resolved through the
+// host's THREADED kind gates, so a kind whose authored body moved into a plugin validates against
+// THAT body rather than the base table's keeper (`vm` -> `#ResolvedVm`, the POST-default envelope,
+// which no authored document satisfies; opencharly/opencharly#1048). Delegates to the ONE copy in
+// sdk/loaderkit, exactly as its ungated sibling does.
+func (*provider) ValidateEntityCUEWithGates(kind, label string, entity cue.Value, gates map[string]spec.KindGate) error {
+	return loaderkit.ValidateEntityCUEWithGates(kind, label, entity, gates)
+}
+
 // CueDocFromYAML implements spec.ProjectLoader — the typed YAML→cue.Value ingest the host calls
 // (compiled-in, no wire envelope): delegates to the ONE copy in sdk/loaderkit (K1 unit 2).
 func (*provider) CueDocFromYAML(path string, data []byte) (cue.Value, error) {
