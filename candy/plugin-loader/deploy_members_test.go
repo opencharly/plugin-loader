@@ -189,15 +189,16 @@ func TestValidateMembers_AcceptsEmptyTarget(t *testing.T) {
 	}
 }
 
-// TestValidateMembers_DottedKeyRejected: a member key with a dot collides with
-// the nested dotted-path addressing grammar.
-func TestValidateMembers_DottedKeyRejected(t *testing.T) {
+// TestValidateMembers_EmptySegmentRejected: a dot is the NESTED-PATH grammar, so `a.b` is a
+// legal member path; what the shared identity rule rejects is an EMPTY segment (`a..b`), which
+// would address no node. Re-derived when ValidateDeploymentName became the one identity rule.
+func TestValidateMembers_EmptySegmentRejected(t *testing.T) {
 	uf := &spec.UnifiedFile{Deploy: map[string]spec.DeployNode{
 		"bed": {Target: "pod", Image: "web", Member: []spec.Member{
-			deployLevelMember("a.b", &spec.DeployNode{Target: "pod", Image: "chrome-headless"}),
+			deployLevelMember("a..b", &spec.DeployNode{Target: "pod", Image: "chrome-headless"}),
 		}},
 	}}
 	if err := loaderkit.ValidateMembers(uf); err == nil {
-		t.Fatalf("expected a dotted-key rejection")
+		t.Fatalf("expected an empty-segment rejection")
 	}
 }

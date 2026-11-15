@@ -6,7 +6,6 @@ package loader
 // themselves are covered by sdk/loaderkit's candy_node_test.go + parse_doc_stream_test.go).
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/opencharly/sdk/loaderkit"
@@ -62,8 +61,12 @@ func TestF2Seam_ParseDocStream(t *testing.T) {
 	if len(docs) != 1 || docs[0].Project.Nodes[0].Name != "redis" {
 		t.Fatalf("ParseDocStream docs = %+v, want one redis node", docs)
 	}
-	if !strings.Contains(string(docs[0].Directives), "redis") {
-		t.Fatalf("directives body incomplete: %s", docs[0].Directives)
+	// The fixture carries no DOCUMENT directive (the `version:` key was deleted with
+	// #SchemaVersion), so the directives body must be empty — the entity rides Project.Nodes.
+	// Re-derived when the version stamp went; the former assertion looked for the node NAME in
+	// the directives, which was only true while `version:` was a directive.
+	if len(docs[0].Directives) != 0 {
+		t.Fatalf("directives body should be empty for a directive-free doc: %s", docs[0].Directives)
 	}
 	if len(imports) != 0 || len(specs) != 0 {
 		t.Fatalf("unexpected imports/specs: %v %v", imports, specs)

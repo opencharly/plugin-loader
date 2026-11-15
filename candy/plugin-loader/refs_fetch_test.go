@@ -9,6 +9,7 @@ import (
 	"github.com/opencharly/sdk/loaderkit"
 	"github.com/opencharly/spec/refs"
 	"github.com/opencharly/spec/spec"
+	"strings"
 )
 
 // refs_fetch_test.go — migrated from charly/refs_fresh_test.go (K-wave 2 cone R1) together with the
@@ -28,7 +29,13 @@ type stubRefsDownloader struct {
 }
 
 func (s *stubRefsDownloader) Download(repoPath, version string) (string, error) {
+	// A real downloader CREATES the tree it returns; the mechanism lstats it after the
+	// delegate (the migrate leg), so the stub must materialize the path it promises rather
+	// than hand back a name nothing made.
 	s.calls++
+	if err := os.MkdirAll(s.path, 0o755); err != nil {
+		return "", err
+	}
 	return s.path, nil
 }
 
@@ -49,6 +56,12 @@ func TestEnsureRepoDownloaded_MutableRefAlwaysDelegates(t *testing.T) {
 			t.Fatal(err)
 		}
 		if err := os.WriteFile(filepath.Join(dir, spec.UnifiedFileName), []byte(head), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// A cache entry is served only when it is a CERTIFIED export: the directory plus its
+		// v2 provenance sidecar (the commit its content is). Path existence alone stopped being
+		// validity when IsRepoCached and the resolution cache were unified on ONE predicate.
+		if err := refs.WriteRepoCacheProvenance(dir, "0123456789abcdef0123456789abcdef01234567"); err != nil {
 			t.Fatal(err)
 		}
 		return dir
@@ -72,7 +85,10 @@ func TestEnsureRepoDownloaded_MutableRefAlwaysDelegates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("mutable ref: %v", err)
 	}
-	if stub.calls != 1 || got != stub.path {
+	// The mechanism returns the RESHAPE VIEW of the downloaded tree (`<path>.view.<hash>`),
+	// so the delegate is proven by the call count plus the view descending from the stub's
+	// path — not by string equality with the raw path.
+	if stub.calls != 1 || !strings.HasPrefix(got, stub.path) {
 		t.Fatalf("mutable ref must delegate to the downloader even when cached: calls=%d path=%q (cache %q)",
 			stub.calls, got, mutableCache)
 	}
@@ -84,13 +100,24 @@ func TestEnsureRepoDownloaded_MutableRefAlwaysDelegates(t *testing.T) {
 	if stub.calls != 1 {
 		t.Fatalf("immutable tag must keep the offline cache hit (no download): calls=%d", stub.calls)
 	}
-	if got != immutableCache {
-		t.Fatalf("immutable tag must return the cache path %q, got %q", immutableCache, got)
+	// A cache hit returns the RESHAPE VIEW of the cached export (the same wrapping the
+	// download path applies), so the offline hit is proven by the call count plus the view
+	// descending from the cache path.
+	if !strings.HasPrefix(got, immutableCache) {
+		t.Fatalf("immutable tag must return the cache path %q (or its view), got %q", immutableCache, got)
 	}
 
-	// The freshly-downloaded tree is migrated; the untouched immutable cache hit is not.
-	if len(migrated) != 1 || migrated[0] != stub.path {
-		t.Fatalf("expected exactly one migrate, of the downloaded tree %q; got %v", stub.path, migrated)
+	// Every served tree is migrated through its RESHAPE VIEW (the `.view.<hash>.tmp` path the
+	// mechanism derives), so the delegate leg is proven by a migrate whose path descends from
+	// the downloaded tree — not by an exact match on the raw path, which the view wraps.
+	found := false
+	for _, m := range migrated {
+		if strings.HasPrefix(m, stub.path) {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected a migrate of the downloaded tree %q (or its view); got %v", stub.path, migrated)
 	}
 }
 
