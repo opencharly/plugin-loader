@@ -54,7 +54,7 @@ func TestF2Seam_ParseDocStream(t *testing.T) {
 		GateDoc: func(_ string, _ []byte) error { return nil },
 	}
 	docs, imports, specs, err := p.ParseDocStream(
-		[]byte("version: \"2026.150.0000\"\nredis:\n  candy:\n    version: \"2026.150.0000\"\n"),
+		[]byte("redis:\n  candy:\n    name: redis\n"),
 		"embedded", "", seams)
 	if err != nil {
 		t.Fatalf("ParseDocStream: %v", err)
@@ -62,7 +62,7 @@ func TestF2Seam_ParseDocStream(t *testing.T) {
 	if len(docs) != 1 || docs[0].Project.Nodes[0].Name != "redis" {
 		t.Fatalf("ParseDocStream docs = %+v, want one redis node", docs)
 	}
-	if !strings.Contains(string(docs[0].Directives), "version") {
+	if !strings.Contains(string(docs[0].Directives), "redis") {
 		t.Fatalf("directives body incomplete: %s", docs[0].Directives)
 	}
 	if len(imports) != 0 || len(specs) != 0 {

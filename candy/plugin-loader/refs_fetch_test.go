@@ -40,8 +40,9 @@ func TestEnsureRepoDownloaded_MutableRefAlwaysDelegates(t *testing.T) {
 	cacheRoot := t.TempDir()
 	t.Setenv("CHARLY_REPO_CACHE", cacheRoot)
 
-	// A head-schema charly.yml so the cache is not behind HEAD (no migration path taken).
-	head := "version: " + spec.SchemaVersion + "\n"
+	// A head-schema charly.yml so the cache is not behind HEAD (no migration path taken). The
+	// version: stamp was deleted with #SchemaVersion; a current-schema manifest is the empty one.
+	head := "repo: github.com/foo/bar\n"
 	seed := func(version string) string {
 		dir := filepath.Join(cacheRoot, "github.com", "foo", "bar@"+version)
 		if err := os.MkdirAll(dir, 0o755); err != nil {

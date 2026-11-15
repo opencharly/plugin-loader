@@ -23,7 +23,6 @@ func TestPickCandyVersion(t *testing.T) {
 	mk := func(ver, tag string) spec.CandyCandidate {
 		return spec.CandyCandidate{
 			Scanned: spec.ScannedCandy{Model: spec.CandyModel{Name: "x", Version: ver}},
-			Version: ver,
 			GitTag:  tag,
 			Source:  "github.com/o/r@" + tag,
 		}
@@ -32,9 +31,9 @@ func TestPickCandyVersion(t *testing.T) {
 	// to redirect os.Stderr and scrape the bytes back — a workaround for advisories that had
 	// nowhere structured to go. loaderkit.PickCandyVersion now requires the sink, so the
 	// scraping is gone rather than kept alongside it.
-	capture := func(fn func(warn func(string, ...any)) spec.CandyCandidate) (spec.CandyCandidate, string) {
+	capture := func(fn func(warn func(spec.DiagLevel, string, ...any)) spec.CandyCandidate) (spec.CandyCandidate, string) {
 		var sb strings.Builder
-		got := fn(func(format string, args ...any) {
+		got := fn(func(_ spec.DiagLevel, format string, args ...any) {
 			sb.WriteString(fmt.Sprintf(format, args...))
 			sb.WriteString("\n")
 		})
@@ -42,7 +41,7 @@ func TestPickCandyVersion(t *testing.T) {
 	}
 
 	// Same per-entity version, different git tags -> NO warning, newest tag wins.
-	got, warn := capture(func(warn func(string, ...any)) spec.CandyCandidate {
+	got, warn := capture(func(warn func(spec.DiagLevel, string, ...any)) spec.CandyCandidate {
 		return loaderkit.PickCandyVersion("github.com/o/r/layers/x", []spec.CandyCandidate{
 			mk("2026.141.1600", "v2026.141.1600"),
 			mk("2026.141.1600", "v2026.150.900"),
@@ -56,14 +55,14 @@ func TestPickCandyVersion(t *testing.T) {
 	}
 
 	// Different per-entity versions -> exactly one warning, newest version wins.
-	got, warn = capture(func(warn func(string, ...any)) spec.CandyCandidate {
+	got, warn = capture(func(warn func(spec.DiagLevel, string, ...any)) spec.CandyCandidate {
 		return loaderkit.PickCandyVersion("github.com/o/r/layers/x", []spec.CandyCandidate{
 			mk("2026.141.1600", "v2026.141.1600"),
 			mk("2026.144.0531", "v2026.144.531"),
 		}, warn)
 	})
-	if got.Version != "2026.144.0531" {
-		t.Errorf("newest per-entity version must win, got %q", got.Version)
+	if got.Scanned.Model.Version != "2026.144.0531" {
+		t.Errorf("newest per-entity version must win, got %q", got.Scanned.Model.Version)
 	}
 	if !strings.Contains(warn, "resolved to multiple versions") || !strings.Contains(warn, "2026.144.0531") {
 		t.Errorf("expected one multi-version warning naming the winner, got: %q", warn)
