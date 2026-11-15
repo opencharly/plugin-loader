@@ -23,7 +23,6 @@ func TestPickCandyVersion(t *testing.T) {
 	mk := func(ver, tag string) spec.CandyCandidate {
 		return spec.CandyCandidate{
 			Scanned: spec.ScannedCandy{Model: spec.CandyModel{Name: "x", Version: ver}},
-			Version: ver,
 			GitTag:  tag,
 			Source:  "github.com/o/r@" + tag,
 		}
@@ -32,9 +31,9 @@ func TestPickCandyVersion(t *testing.T) {
 	// to redirect os.Stderr and scrape the bytes back — a workaround for advisories that had
 	// nowhere structured to go. loaderkit.PickCandyVersion now requires the sink, so the
 	// scraping is gone rather than kept alongside it.
-	capture := func(fn func(warn func(string, ...any)) spec.CandyCandidate) (spec.CandyCandidate, string) {
+	capture := func(fn func(warn func(spec.DiagLevel, string, ...any)) spec.CandyCandidate) (spec.CandyCandidate, string) {
 		var sb strings.Builder
-		got := fn(func(format string, args ...any) {
+		got := fn(func(_ spec.DiagLevel, format string, args ...any) {
 			sb.WriteString(fmt.Sprintf(format, args...))
 			sb.WriteString("\n")
 		})
@@ -42,7 +41,7 @@ func TestPickCandyVersion(t *testing.T) {
 	}
 
 	// Same per-entity version, different git tags -> NO warning, newest tag wins.
-	got, warn := capture(func(warn func(string, ...any)) spec.CandyCandidate {
+	got, warn := capture(func(warn func(spec.DiagLevel, string, ...any)) spec.CandyCandidate {
 		return loaderkit.PickCandyVersion("github.com/o/r/layers/x", []spec.CandyCandidate{
 			mk("2026.141.1600", "v2026.141.1600"),
 			mk("2026.141.1600", "v2026.150.900"),
@@ -55,17 +54,20 @@ func TestPickCandyVersion(t *testing.T) {
 		t.Errorf("freshness tiebreak: want newest git tag v2026.150.900, got %q", got.GitTag)
 	}
 
-	// Different per-entity versions -> exactly one warning, newest version wins.
-	got, warn = capture(func(warn func(string, ...any)) spec.CandyCandidate {
+	// Different per-entity versions, different tags -> the TAG is the only version, so the
+	// arbiter resolves by freshness and does NOT warn about the per-entity stamps: the
+	// `version:` field and #SchemaVersion were deleted (CHANGELOG/0.2026270.938.md), and
+	// PickCandyVersion's multi-version advisory was keyed on that field.
+	got, warn = capture(func(warn func(spec.DiagLevel, string, ...any)) spec.CandyCandidate {
 		return loaderkit.PickCandyVersion("github.com/o/r/layers/x", []spec.CandyCandidate{
 			mk("2026.141.1600", "v2026.141.1600"),
 			mk("2026.144.0531", "v2026.144.531"),
 		}, warn)
 	})
-	if got.Version != "2026.144.0531" {
-		t.Errorf("newest per-entity version must win, got %q", got.Version)
+	if got.GitTag != "v2026.144.531" {
+		t.Errorf("newest tag must win, got %q", got.GitTag)
 	}
-	if !strings.Contains(warn, "resolved to multiple versions") || !strings.Contains(warn, "2026.144.0531") {
-		t.Errorf("expected one multi-version warning naming the winner, got: %q", warn)
+	if warn != "" {
+		t.Errorf("a per-entity stamp difference is not a conflict any more; got a warning: %q", warn)
 	}
 }

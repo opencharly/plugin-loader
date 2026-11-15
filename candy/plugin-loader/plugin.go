@@ -194,8 +194,8 @@ func (*provider) ValidateNodeDocCUE(label string, data []byte) error {
 // ApplyCueDefaults implements spec.ProjectLoader — the typed post-merge schema-defaults fill the
 // host calls (compiled-in, no wire envelope): delegates to the ONE copy in sdk/loaderkit (K1 unit
 // 2).
-func (*provider) ApplyCueDefaults(kind string, out any) error {
-	return loaderkit.ApplyCueDefaults(kind, out)
+func (*provider) ApplyCueDefaults(kind string, out any, t spec.Threaded) error {
+	return loaderkit.ApplyCueDefaults(kind, out, t.KindGates)
 }
 
 // IsResourceDisc / DeployTargetForDisc / SetDeployCrossRef / IsStandaloneResourceKind /
