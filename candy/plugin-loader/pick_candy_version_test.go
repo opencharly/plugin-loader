@@ -34,24 +34,26 @@ func TestPickCandyVersion(t *testing.T) {
 	capture := func(fn func(warn func(spec.DiagLevel, string, ...any)) spec.CandyCandidate) (spec.CandyCandidate, string) {
 		var sb strings.Builder
 		got := fn(func(_ spec.DiagLevel, format string, args ...any) {
-			sb.WriteString(fmt.Sprintf(format, args...))
-			sb.WriteString("\n")
+			fmt.Fprintf(&sb, format+"\n", args...)
 		})
 		return got, sb.String()
 	}
 
-	// Same per-entity version, different git tags -> NO warning, newest tag wins.
+	// Same per-entity version, different git tags -> NO warning, newest tag wins. Every tag here
+	// is a REAL CalVer tag (4-digit HHMM): the arbiter prefers a parseable CalVer tag over any
+	// other ref (sdk#549), so an unpadded `v2026.150.900` would lose to a real one by form, not
+	// by date — which is what this fixture used to exercise by accident.
 	got, warn := capture(func(warn func(spec.DiagLevel, string, ...any)) spec.CandyCandidate {
 		return loaderkit.PickCandyVersion("github.com/o/r/layers/x", []spec.CandyCandidate{
 			mk("2026.141.1600", "v2026.141.1600"),
-			mk("2026.141.1600", "v2026.150.900"),
+			mk("2026.141.1600", "v2026.150.0900"),
 		}, warn)
 	})
 	if warn != "" {
 		t.Errorf("same per-entity version must not warn, got: %q", warn)
 	}
-	if got.GitTag != "v2026.150.900" {
-		t.Errorf("freshness tiebreak: want newest git tag v2026.150.900, got %q", got.GitTag)
+	if got.GitTag != "v2026.150.0900" {
+		t.Errorf("freshness tiebreak: want newest git tag v2026.150.0900, got %q", got.GitTag)
 	}
 
 	// Different per-entity versions, different tags -> the TAG is the only version, so the
@@ -61,10 +63,10 @@ func TestPickCandyVersion(t *testing.T) {
 	got, warn = capture(func(warn func(spec.DiagLevel, string, ...any)) spec.CandyCandidate {
 		return loaderkit.PickCandyVersion("github.com/o/r/layers/x", []spec.CandyCandidate{
 			mk("2026.141.1600", "v2026.141.1600"),
-			mk("2026.144.0531", "v2026.144.531"),
+			mk("2026.144.0531", "v2026.144.0531"),
 		}, warn)
 	})
-	if got.GitTag != "v2026.144.531" {
+	if got.GitTag != "v2026.144.0531" {
 		t.Errorf("newest tag must win, got %q", got.GitTag)
 	}
 	if warn != "" {
