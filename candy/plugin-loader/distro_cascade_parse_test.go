@@ -85,8 +85,8 @@ distro:
 `)
 	// Bare distro keys land in per-distro TAG sections, NOT a shared "deb" format
 	// section (the collapse that caused the non-deterministic repo bug).
-	if l.FormatSection("deb") != nil {
-		t.Error("bare distro keys must NOT create a deb format section")
+	if l.TagSection("deb") != nil {
+		t.Error("bare distro keys must NOT create a shared deb section")
 	}
 	if d := l.TagSection("debian"); d == nil || !reflect.DeepEqual(d.Package, []string{"foo"}) {
 		t.Errorf("TagSection(debian).Package = %v, want [foo]", d)
@@ -117,7 +117,12 @@ distro:
 	}
 }
 
-func TestCascade_ArchAurStaysFormatSection(t *testing.T) {
+// TestCascade_ArchAurIsATagManager: `distro.arch.aur` is a build-time MANAGER declaration recorded
+// on the arch tag section (TagPkgConfig.Managers), exactly like that tag's OS packages, so it
+// reaches an image only through its tag chain — never one image-independent format section every
+// image would have to opt out of (opencharly/sdk#608). A compound key splits the declaration onto
+// every tag it names, like the packages beside it.
+func TestCascade_ArchAurIsATagManager(t *testing.T) {
 	l := deriveCandy(t, `
 name: t
 distro:
@@ -125,13 +130,30 @@ distro:
     package: [base]
     aur:
       package: [aur-pkg]
+      option: [--nocheck]
+  "fedora,debian":
+    aur:
+      package: [cross-pkg]
 `)
-	if a := l.TagSection("arch"); a == nil || a.Package[0] != "base" {
-		t.Errorf("arch base must be a tag section, got %v", a)
+	a := l.TagSection("arch")
+	if a == nil || a.Package[0] != "base" {
+		t.Fatalf("arch base must be a tag section, got %v", a)
 	}
-	// aur is a real build format — it keeps its dedicated format section.
-	if aur := l.FormatSection("aur"); aur == nil || aur.Packages[0] != "aur-pkg" {
-		t.Errorf("arch.aur must stay a format section, got %v", aur)
+	aur, ok := a.Managers["aur"]
+	if !ok || !reflect.DeepEqual(aur.Packages, []string{"aur-pkg"}) {
+		t.Errorf("arch.aur must be the arch tag's aur manager declaration, got %+v", a.Managers)
+	}
+	if !reflect.DeepEqual(aur.Raw["options"], []string{"--nocheck"}) {
+		t.Errorf("arch.aur options = %v, want [--nocheck]", aur.Raw["options"])
+	}
+	for _, tag := range []string{"fedora", "debian"} {
+		c := l.TagSection(tag)
+		if c == nil || !reflect.DeepEqual(c.Managers["aur"].Packages, []string{"cross-pkg"}) {
+			t.Errorf("compound tag %q aur declaration = %+v, want [cross-pkg]", tag, c)
+		}
+	}
+	if l.TagSection("aur") != nil {
+		t.Error("aur must not become a section of its own")
 	}
 }
 

@@ -32,7 +32,7 @@ func TestF2Seam_CandyMethods(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildCandy: %v", err)
 	}
-	if name != "my-layer" || len(ic.CandyYAML.Package) != 1 {
+	if name != "my-layer" || len(ic.Package) != 1 {
 		t.Fatalf("BuildCandy = %q %+v, want my-layer with one package", name, ic.CandyYAML)
 	}
 }
