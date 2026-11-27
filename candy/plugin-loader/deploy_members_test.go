@@ -146,8 +146,8 @@ var deployTargetWords = func() []string {
 
 // TestValidateMembers_AcceptsCanonicalSubstrates proves the kind-blind
 // validation: a deploy-level member whose target is any of the CANONICAL deploy
-// substrates is ACCEPTED. Non-vacuous — asserts all 5 (pod/vm/local/kubernetes/
-// android), so a silently-empty canonical set or a broken membership check
+// substrates is ACCEPTED. Non-vacuous — asserts every word in spec.ResourceKinds
+// except `group`, so a silently-empty canonical set or a broken membership check
 // cannot pass.
 func TestValidateMembers_AcceptsCanonicalSubstrates(t *testing.T) {
 	for _, target := range deployTargetWords {

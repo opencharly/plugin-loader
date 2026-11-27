@@ -316,7 +316,7 @@ func (*provider) ResolveMergedDeployTree(ctx context.Context, dir string) (map[s
 	return loaderkit.ResolveMergedTreeViaExecutor(ctx, ex, dir)
 }
 
-// MaterializeLoadedProject / MarshalMaterialized / ValidateAndroidDevices / ValidatePreemptible
+// MaterializeLoadedProject / MarshalMaterialized / ValidatePreemptible
 // implement the whole-project loader ops on spec.ProjectLoader (#55 2b C3): charly core reaches the
 // loaderkit materialize/validate MECHANISM through this compiled-in seam (no wire envelope) instead of
 // importing loaderkit itself. The orchestration/validation LOGIC stays in the ONE copy in sdk/loaderkit;
@@ -327,10 +327,6 @@ func (*provider) MaterializeLoadedProject(lp *spec.LoadedProject, merged *spec.U
 
 func (*provider) MarshalMaterialized(uf *spec.UnifiedFile) ([]byte, error) {
 	return loaderkit.MarshalMaterialized(uf)
-}
-
-func (*provider) ValidateAndroidDevices(uf *spec.UnifiedFile, resolveAndroid func(json.RawMessage) (*spec.ResolvedAndroid, error)) error {
-	return loaderkit.ValidateAndroidDevices(uf, resolveAndroid)
 }
 
 func (*provider) ValidatePreemptible(uf *spec.UnifiedFile, resolveResource func(json.RawMessage) (*spec.ResolvedResource, error), resolveVm func(json.RawMessage) (*spec.ResolvedVm, error)) error {
